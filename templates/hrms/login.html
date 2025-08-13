@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - ApnaHRMS</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Google Fonts for a nicer look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f7f6fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Poppins', sans-serif;
+            padding: 20px;
+        }
+        .login-container {
+            background-color: white;
+            padding: 2.5rem 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .logo {
+            max-width: 250px; /* Adjust as needed */
+            margin-bottom: 0.5rem;
+        }
+        .slogan {
+            color: #555;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            margin-bottom: 2rem;
+        }
+        .headline {
+            color: #333;
+            font-size: 1.1rem;
+            margin-bottom: 0.2rem;
+        }
+        .headline-bold {
+            color: #a18335; /* Gold-like color */
+            font-weight: 600;
+            font-size: 1.4rem;
+            margin-bottom: 2rem;
+        }
+        .form-control {
+            border-radius: 25px;
+            padding: 12px 20px;
+            background-color: #f7f6fa;
+            border: 1px solid #e0e0e0;
+            text-align: left; /* Align text inside inputs to the left */
+        }
+        .form-control:focus {
+            background-color: white;
+            border-color: #3b3a6e;
+            box-shadow: none;
+        }
+        .form-label {
+            text-align: left;
+            width: 100%;
+            margin-left: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .btn-custom {
+            background-color: #3b3a6e;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+        .btn-custom:hover {
+            background-color: #2e2d57;
+            color: white;
+        }
+        .alert-danger {
+            border-radius: 25px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Replace with your actual logo -->
+        <img src="{% static 'assets/img/logo.png' %}" alt="Vighnaharta Gold Logo" class="logo" />
+        <h2 class="brand-name" style="font-size: 44px;color: #254b76;">APNAHRMS</h2>
+
+
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-danger" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="mb-3 text-start">
+                <label for="company_id" class="form-label">Company ID</label>
+                <input type="text" class="form-control" id="company_id" name="company_id" placeholder="Enter your Company ID" required>
+            </div>
+            <div class="mb-3 text-start">
+                <label for="mobile_no" class="form-label">Mobile Number</label>
+                <input type="text" class="form-control" id="mobile_no" name="mobile_no" placeholder="Enter your mobile number" required>
+            </div>
+            <div class="mb-3 text-start">
+                <label for="pin" class="form-label">PIN</label>
+                <input type="password" class="form-control" id="pin" name="pin" placeholder="Enter your 4-digit PIN" required>
+            </div>
+            <button type="submit" class="btn btn-custom mt-3">LOGIN</button>
+        </form>
+    </div>
+</body>
+</html>

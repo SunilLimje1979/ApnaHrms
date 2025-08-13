@@ -1,13 +1,11 @@
 from django.http import HttpResponse
 import requests
-from django.shortcuts import render,redirect
-from django.http import JsonResponse
-from django.contrib import messages
 from rest_framework.decorators import api_view
-from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
 import os
 import uuid
 
@@ -44,3 +42,55 @@ def upload_cash_photo(request):
         return JsonResponse({'status': 'success', 'file_url': file_url})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+
+
+
+
+
+def login_view(request):
+    # If user is already logged in, redirect them away from the login page
+    if 'user_profile' in request.session:
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        company_id = request.POST.get('company_id')
+        mobile_no = request.POST.get('mobile_no')
+        pin = request.POST.get('pin')
+
+        api_url = "http://127.0.0.1:8002/hrms_backend/api/employee_login/"
+
+        payload = {
+            "company_id": company_id,
+            "mobile_no": mobile_no,
+            "pin": pin
+        }
+
+        try:
+            response = requests.post(api_url, json=payload, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if data.get("message_code") == 1000:
+                user_profile = data["message_data"][0]
+                request.session['user_profile'] = user_profile
+                request.session['is_logged_in'] = True
+                
+                return redirect('dashboard')
+            else:
+                error_message = data.get("message_text", "Invalid credentials or user not found.")
+                messages.error(request, error_message)
+
+        except requests.exceptions.RequestException:
+            messages.error(request, "Could not connect to the login service. Please try again later.")
+        
+        except Exception as e:
+            messages.error(request, f"An unexpected error occurred: {e}")
+
+    return render(request, 'hrms/login.html')
+
+
+def logout_view(request):
+    request.session.flush()
+    messages.info(request, "You have been successfully logged out.")
+    return redirect('login')
