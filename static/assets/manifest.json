@@ -1,0 +1,19 @@
+{
+    "name": "APNAHRMS",
+    "short_name": "apnahrms",
+    "description": "apnahrms Web App",
+    "dir": "auto",
+    "lang": "en-US",
+    "display": "standalone",
+    "orientation": "any",
+    "start_url": "/apnahrms/login/",
+    "background_color": "#FFFFFF",
+    "theme_color": "#29277A",
+    "icons": [
+        {
+        "src": "/apnahrms/static/assets/img/vgoldlogo.png",
+        "sizes": "512x512",
+        "type": "image/png"
+    }
+    ]
+}
