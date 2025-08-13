@@ -57,7 +57,7 @@ def login_view(request):
         mobile_no = request.POST.get('mobile_no')
         pin = request.POST.get('pin')
 
-        api_url = "http://127.0.0.1:8002/hrms_backend/api/employee_login/"
+        api_url = "https://drishtis.app/hrms_backend/api/employee_login/"
 
         payload = {
             "company_id": company_id,
@@ -92,5 +92,5 @@ def login_view(request):
 
 def logout_view(request):
     request.session.flush()
-    messages.info(request, "You have been successfully logged out.")
+    # messages.info(request, "You have been successfully logged out.")
     return redirect('login')
