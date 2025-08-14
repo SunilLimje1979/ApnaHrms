@@ -122,11 +122,11 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
-STATIC_URL = "/apnahrms/static/"
+STATIC_URL = "/ApnaHrms/static/"
 STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [
-    BASE_DIR / "apnahrms/static",
+    BASE_DIR / "ApnaHrms/static",
     # BASE_DIR / "static",
 ]
 
