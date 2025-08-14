@@ -51,8 +51,9 @@
         .navbar-brand {
             color: white;
             font-size: 20px;
-            margin-left: 20px;
+            margin-left: 8px; /* smaller gap */
         }
+
         .drawer {
             position: fixed;
             top: 55px;
@@ -91,7 +92,7 @@
         .additional-content img.logo {
             display: block;
             margin: 0 auto;
-            height: 120px;
+            height: 100px;
         }
         .drawer-close-btn {
             background: none;
@@ -102,23 +103,35 @@
             right: 10px;
             color: black;
         }
+
+        .navbar-brand,
+        .navbar-brand:hover,
+        .navbar-brand:focus,
+        .navbar-brand:active {
+            color: white !important;
+            text-decoration: none;
+        }
+
     </style>
 </head>
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg fixed-top">
-        <div class="container-fluid d-flex align-items-center">
-            <button class="navbar-toggler" type="button" id="menuBtn">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <span class="navbar-brand mb-0">Welcome - {{ first_name }}</span>
+        <div class="container-fluid">
+            <div class="d-flex align-items-center">
+                <button class="navbar-toggler me-2" type="button" id="menuBtn">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <span class="navbar-brand mb-0">Welcome - {{ first_name }}</span>
+            </div>
         </div>
     </nav>
+
 
     <!-- Side Drawer -->
     <div id="drawer" class="drawer">
         <div class="additional-content">
-            <img src="{% static 'assets/img/logo.png' %}" alt="Logo" class="logo" style="margin-bottom:0;" />
+            <img src="{% static 'assets/img/logo.jpg' %}" alt="Logo" class="logo" style="margin-bottom:0;" />
 
             <p style="font-size: 25px;color: #254b76;margin-top:0;" ><b>APNAHRMS</b></p>
             <button class="drawer-close-btn" onclick="closeDrawer()">&times;</button>
