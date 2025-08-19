@@ -2,58 +2,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Complete Task</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Complete Task Manually</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
+
+    <!-- Styles copied from dashboard.html for consistency -->
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { background-color: #254b76; height: 55px; }
+        .navbar-toggler { border: none; background-color: white; border-radius: 4px; padding: 4px 8px; }
+        .navbar-toggler-icon { display: inline-block; width: 20px; height: 2px; background-color: black; position: relative; }
+        .navbar-toggler-icon::before, .navbar-toggler-icon::after { content: ""; position: absolute; width: 100%; height: 2px; background-color: black; left: 0; }
+        .navbar-toggler-icon::before { top: -6px; }
+        .navbar-toggler-icon::after { top: 6px; }
+        .navbar-brand { color: white; font-size: 20px; margin-left: 20px; }
+        .drawer { position: fixed; top: 55px; left: -100%; width: 70%; height: calc(100% - 55px); background-color: #f8f9fa; transition: left 0.3s ease; padding: 0; box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); z-index: 1000; overflow-y: auto; }
+        .drawer.open { left: 0; }
+        .drawer ul { padding: 10px 20px; font-size: 15px; }
+        .drawer ul li { list-style: none; margin-bottom: 8px; }
+        .drawer ul li a { text-decoration: none; color: #333; font-size: 17px; }
+        .drawer ul li a i { margin-right: 15px; font-size: 20px; }
+        .additional-content { position: sticky; top: 0; background-color: rgb(238, 238, 240); color: white; padding: 10px 0; z-index: 1001; width: 100%; text-align: center; }
+        .additional-content img.logo { display: block; margin: 0 auto; height: 120px; }
+        .drawer-close-btn { background: none; border: none; font-size: 20px; position: absolute; top: 5px; right: 10px; color: black; }
+    </style>
 </head>
-<body class="p-3">
-  <div class="container" style="max-width:520px;">
-    <h4 class="mb-3">Complete Task</h4>
-
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} mb-3" role="alert">
-          {{ message }}
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid d-flex align-items-center">
+            <button class="navbar-toggler" type="button" id="menuBtn">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <span class="navbar-brand mb-0">Manual Task Completion</span>
         </div>
-      {% endfor %}
-    {% endif %}
+    </nav>
 
-    <form method="POST" class="row gy-3">
-      {% csrf_token %}
-      <div class="col-12">
-        <label class="form-label">Task ID</label>
-        <input type="number" name="task_id" class="form-control" placeholder="Enter Task ID" required>
-      </div>
-      <div class="col-12 d-grid">
-        <button type="submit" class="btn btn-primary">Mark as Completed</button>
-      </div>
-    </form>
-
-    <!-- OPTIONAL: client-only direct call (no headers) if you prefer -->
-    <!--
-    <hr class="my-4">
-    <p class="text-muted small">Or complete directly (no headers, direct PUT to API):</p>
-    <div class="d-flex gap-2">
-      <input id="directId" type="number" class="form-control" placeholder="Task ID">
-      <button class="btn btn-outline-secondary" onclick="completeDirect()">Complete</button>
+    <!-- Side Drawer -->
+    <div id="drawer" class="drawer">
+        <!-- ... Your side drawer content from dashboard.html would go here ... -->
     </div>
-    <pre id="directOut" class="mt-3 p-2 bg-light border rounded small"></pre>
+
+    <!-- Main Content -->
+    <div class="container mt-5 pt-4" style="max-width: 600px;">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header">
+                Complete a Task by ID
+            </div>
+            <div class="card-body">
+                <p class="card-text text-muted">This form is for manually completing a task if you know its specific ID.</p>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="task_id_input" class="form-label">Task ID</label>
+                        <input type="number" name="task_id" class="form-control" id="task_id_input" placeholder="Enter Numeric Task ID" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Mark as Completed</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      async function completeDirect() {
-        const id = document.getElementById('directId').value.trim();
-        if (!id) { alert('Enter Task ID'); return; }
-        try {
-          const res = await fetch(`https://drishtis.app/hrms_backend/api/task_complete/${id}/`, { method: 'PUT' });
-          const out = await res.json();
-          document.getElementById('directOut').textContent = JSON.stringify(out, null, 2);
-          alert(out.message_text || 'Done');
-        } catch (e) {
-          alert('Network error'); console.error(e);
-        }
-      }
+        // Drawer open/close logic
+        const menuBtn = document.getElementById("menuBtn");
+        const drawer = document.getElementById("drawer");
+        menuBtn.addEventListener("click", () => drawer.classList.add("open"));
+        function closeDrawer() { drawer.classList.remove("open"); }
+        window.addEventListener("click", function (event) {
+            if (!drawer.contains(event.target) && !menuBtn.contains(event.target)) {
+                closeDrawer();
+            }
+        });
     </script>
-    -->
-  </div>
 </body>
 </html>
