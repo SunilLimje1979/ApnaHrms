@@ -1,0 +1,34 @@
+{% if tasks %}
+<ul class="list-group list-group-flush">
+    {% for task in tasks %}
+    <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap py-3">
+        <div class="me-3 mb-2 mb-md-0">
+            <h6 class="mb-1">{{ task.project_name }}</h6>
+            <small class="text-muted">{{ task.task_type }} | {{ task.start_time }} - {{ task.end_time|default:"In Progress" }}</small>
+        </div>
+        <div class="d-flex align-items-center">
+            <!-- Employee's "Complete" Button -->
+            {% if not is_manager_view and task.task_status == "Started" %}
+                <form action="{% url 'task_complete' task.employee_task_id %}" method="POST" class="d-inline">
+                    {% csrf_token %}<button type="submit" class="btn btn-success btn-sm">Complete</button>
+                </form>
+            {% endif %}
+
+            <!-- Manager's "Approve/Reject" Buttons -->
+            {% if is_manager_view and task.task_status == "Completed" %}
+                <form action="{% url 'task_approve' task.employee_task_id %}" method="POST" class="d-inline me-1">
+                    {% csrf_token %}<button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                </form>
+                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectionModal" data-bs-reject-url="{% url 'task_reject' task.employee_task_id %}">
+                    Reject
+                </button>
+            {% endif %}
+
+            <span class="badge bg-secondary ms-2">{{ task.task_status }}</span>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+    <p class="text-center text-muted p-4">No tasks found for the selected date.</p>
+{% endif %}
