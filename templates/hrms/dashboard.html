@@ -130,10 +130,42 @@
                 </a>
             </li>
 
-           <li>
-                <a href="{% url 'dashboard' %}">
+                       <!-- Timesheet Dropdown Menu -->
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-calendar-check"></i> Timesheet
                 </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'timesheet_page' %}">
+                            <i class="bi bi-list-task me-2"></i>View Timesheets
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'TaskAdd' %}">
+                            <i class="bi bi-plus-circle me-2"></i>Insert Task
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'task_list' %}">
+                            <i class="bi bi-list-task me-2"></i>Complete Tasks
+                        </a>
+                    </li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+
+                     <li>
+        <a class="dropdown-item" href="{% url 'team_approvals' %}">
+            <i class="bi bi-people-fill me-2"></i>Team Approvals
+        </a>
+    </li>
+                    <li>
+                        <a class="dropdown-item disabled" href="#">
+                            <i class="bi bi-x-circle me-2"></i>Cancel Task
+                        </a>
+                    </li>
+                </ul>
             </li>
 
             <li>

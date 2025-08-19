@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Complete Task</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-3">
+  <div class="container" style="max-width:520px;">
+    <h4 class="mb-3">Complete Task</h4>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} mb-3" role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="POST" class="row gy-3">
+      {% csrf_token %}
+      <div class="col-12">
+        <label class="form-label">Task ID</label>
+        <input type="number" name="task_id" class="form-control" placeholder="Enter Task ID" required>
+      </div>
+      <div class="col-12 d-grid">
+        <button type="submit" class="btn btn-primary">Mark as Completed</button>
+      </div>
+    </form>
+
+    <!-- OPTIONAL: client-only direct call (no headers) if you prefer -->
+    <!--
+    <hr class="my-4">
+    <p class="text-muted small">Or complete directly (no headers, direct PUT to API):</p>
+    <div class="d-flex gap-2">
+      <input id="directId" type="number" class="form-control" placeholder="Task ID">
+      <button class="btn btn-outline-secondary" onclick="completeDirect()">Complete</button>
+    </div>
+    <pre id="directOut" class="mt-3 p-2 bg-light border rounded small"></pre>
+    <script>
+      async function completeDirect() {
+        const id = document.getElementById('directId').value.trim();
+        if (!id) { alert('Enter Task ID'); return; }
+        try {
+          const res = await fetch(`https://drishtis.app/hrms_backend/api/task_complete/${id}/`, { method: 'PUT' });
+          const out = await res.json();
+          document.getElementById('directOut').textContent = JSON.stringify(out, null, 2);
+          alert(out.message_text || 'Done');
+        } catch (e) {
+          alert('Network error'); console.error(e);
+        }
+      }
+    </script>
+    -->
+  </div>
+</body>
+</html>
