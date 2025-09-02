@@ -1,0 +1,115 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report an Incident</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            padding-top: 55px;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #254b76;
+            height: 55px;
+        }
+        .navbar-brand { color: white; font-size: 20px; }
+
+        /* Styles for the form */
+        .card {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-radius: 0.75rem;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #254b76;
+            box-shadow: 0 0 0 0.25rem rgba(37, 75, 118, 0.25);
+        }
+        .btn-submit-report {
+            background-color: #254b76;
+            border-color: #254b76;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            width: 100%;
+        }
+        .btn-submit-report:hover {
+            background-color: #1e3c5e;
+            border-color: #1e3c5e;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid d-flex align-items-center justify-content-center position-relative">
+            <a href="{% url 'dashboard' %}" class="btn btn-link text-white me-2 p-0 fs-4" style="position: absolute; left: 15px;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <span class="navbar-brand mb-0" style="font-size: 18px;">Report Incident</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data" class="row g-4">
+                    {% csrf_token %}
+
+                    <div class="col-12">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ form_data.title }}" required>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label for="description" class="form-label">Description *</label>
+                        <textarea class="form-control" id="description" name="description" rows="4" required>{{ form_data.description }}</textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="severity" class="form-label">Severity Level</label>
+                        <select class="form-select" id="severity" name="severity">
+                            <option value="Very High" {% if form_data.severity == 'Very High' %}selected{% endif %}>Very High</option>
+                            <option value="High" {% if form_data.severity == 'High' %}selected{% endif %}>High</option>
+                            <option value="Medium" {% if not form_data.severity or form_data.severity == 'Medium' %}selected{% endif %}>Medium</option>
+                            <option value="Low" {% if form_data.severity == 'Low' %}selected{% endif %}>Low</option>
+                            <option value="Very Low" {% if form_data.severity == 'Very Low' %}selected{% endif %}>Very Low</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label for="incident_department" class="form-label">Affected Department <small class="text-muted">(Optional)</small></label>
+                        <input type="text" class="form-control" id="incident_department" name="incident_department" value="{{ form_data.incident_department }}">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label for="photos" class="form-label">Upload Photos <small class="text-muted">(Optional)</small></label>
+                        <input type="file" class="form-control" id="photos" name="photos" multiple accept="image/*">
+                    </div>
+
+                    <div class="col-12 text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-submit-report">Submit Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

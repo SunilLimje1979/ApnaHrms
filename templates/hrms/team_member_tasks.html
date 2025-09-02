@@ -1,0 +1,203 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Team Member Tasks</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body { padding-top: 55px; background-color: #f8f9fa; }
+        .navbar { background-color: #254b76; height: 55px; }
+        .navbar-brand { color: white; font-size: 20px; }
+
+        /* Styles for Segmented Button Filter */
+        .task-filter .nav-pills {
+            background-color: #e9ecef;
+            border-radius: 0.5rem;
+            padding: 4px;
+        }
+        .task-filter .nav-link {
+            color: #6c757d;
+            border-radius: 0.4rem;
+            padding: 0.4rem 1rem;
+            font-weight: 500;
+        }
+        .task-filter .nav-link.active {
+            background-color: #254b76;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+         /* --- NEW STYLES --- */
+    .btn-past-timesheet {
+        background-color: #254b76; /* Theme color */
+        border-color: #254b76;
+    }
+    .status-badge-lg {
+        font-size: 0.9rem; /* Larger font size */
+        padding: 0.5em 0.9em; /* More padding */
+    }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid d-flex align-items-center justify-content-center position-relative">
+            <a href="{% url 'my_team' %}" class="btn btn-link text-white me-2 p-0 fs-4" style="position: absolute; left: 15px;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <span class="navbar-brand mb-0" style="font-size: 18px;">Team Tasks</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <h4>Tasks for {{ team_member.employee_first_name }} {{ team_member.employee_last_name }}</h4>
+        
+        <!-- ADDED: Segmented Button Filter -->
+        <div class="d-flex justify-content-center my-4 task-filter">
+            <ul class="nav nav-pills" id="taskFilter">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" data-filter="active">Active</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-filter="completed">Completed</a>
+                </li>
+            </ul>
+        </div>
+        
+        {% for task in tasks %}
+            <!-- ADDED: data-status attribute to the card for filtering -->
+            <div class="card mb-3 task-card" data-status="{{ task.task_status }}">
+                <div class="card-body">
+                    <h5 class="card-title">{{ task.project_name }}</h5>
+                    <p class="card-text text-muted">{{ task.date|date:"D, d M Y" }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge status-badge-lg
+                            {% if task.task_status == 'Completed' %}bg-warning text-dark
+                            {% elif task.task_status == 'Approved' %}bg-success
+                            {% elif task.task_status == 'Rejected' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ task.task_status }}
+                        </span>
+                        </div>
+                        <div>
+                            {% if task.task_status == 'Completed' %}
+                                <form action="{% url 'approve_task' %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="task_id" value="{{ task.employee_task_id }}">
+                                    <input type="hidden" name="employee_id" value="{{ team_member.employee_id }}">
+                                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                </form>
+                                <form action="{% url 'reject_task' %}" method="POST" class="d-inline" onsubmit="return addReason(this);">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="task_id" value="{{ task.employee_task_id }}">
+                                    <input type="hidden" name="employee_id" value="{{ team_member.employee_id }}">
+                                    <input type="hidden" name="rejection_reason" value="">
+                                    <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if task.task_status == 'Rejected' and task.rejected_reason %}
+                        <p class="mt-2 mb-0 text-danger"><small><strong>Reason:</strong> {{ task.rejection_reason }}</small></p>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-info">No tasks found for this team member.</div>
+        {% endfor %}
+
+
+<!-- new for past timesheet buttton -->
+
+
+         <div class="mt-4 text-center">
+        <a href="{% url 'past_timesheet_view' team_member.employee_id %}" class="btn btn-primary btn-past-timesheet">
+            <i class="bi bi-calendar-range"></i> View Past Timesheet
+        </a>
+    </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+    function addReason(form) {
+        const reason = prompt("Please enter a reason for rejection:", "");
+        if (reason === null || reason.trim() === "") {
+            alert("Rejection reason is required.");
+            return false;
+        }
+        form.rejection_reason.value = reason;
+        return true;
+    }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- ADDED: JavaScript for the new button filter -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterButtons = document.querySelectorAll('#taskFilter .nav-link');
+            const taskCards = document.querySelectorAll('.task-card');
+            
+            function filterTasks(selectedFilter) {
+                taskCards.forEach(card => {
+                    const status = card.getAttribute('data-status');
+                    
+                    if (selectedFilter === 'completed') {
+                        // If 'Completed' filter is on, show 'Completed', 'Approved', 'Rejected'
+                        if (status === 'Completed' || status === 'Approved' || status === 'Rejected') {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    } else {
+                        // If 'Active' filter is on, show everything else
+                        if (status !== 'Completed' && status !== 'Approved' && status !== 'Rejected') {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    }
+                });
+            }
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    const filter = this.getAttribute('data-filter');
+                    filterTasks(filter);
+                });
+            });
+
+            // Initial filter on page load
+            filterTasks('active');
+
+            // --- THIS IS THE MISSING LOGIC ---
+            // It makes the "Past Timesheet" button work
+            const toggleBtn = document.getElementById('toggleDateFilterBtn');
+            const dateForm = document.getElementById('dateFilterForm');
+
+            toggleBtn.addEventListener('click', function() {
+                if (dateForm.style.display === 'none') {
+                    dateForm.style.display = 'block';
+                } else {
+                    dateForm.style.display = 'none';
+                }
+            });
+            // --- END OF MISSING LOGIC ---
+        });
+    </script>
+</body>
+</html>

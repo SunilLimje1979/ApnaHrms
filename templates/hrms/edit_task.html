@@ -1,0 +1,118 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Task</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            padding-top: 55px;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #254b76;
+            height: 55px;
+        }
+        .navbar-brand { color: white; font-size: 20px; }
+
+        /* --- STYLES FOR THE FORM (like add_task.html) --- */
+        .card {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-radius: 0.75rem;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #254b76;
+            box-shadow: 0 0 0 0.25rem rgba(37, 75, 118, 0.25);
+        }
+        .btn-update-task {
+            background-color: #254b76; /* Theme color */
+            border-color: #254b76;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            width: 100%;
+        }
+        .btn-update-task:hover {
+            background-color: #1e3c5e;
+            border-color: #1e3c5e;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid d-flex align-items-center">
+            <a href="{% url 'task_list' %}" class="btn btn-link text-white me-2 p-0 fs-4"><i class="bi bi-arrow-left"></i></a>
+            <span class="navbar-brand mb-0">Edit Task</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header bg-light">Update Task Details</div>
+            <div class="card-body p-4">
+                <form method="POST" action="{% url 'edit_task' task_id %}" class="row g-4">
+                    {% csrf_token %}
+                    
+                    <div class="col-12">
+                        <label class="form-label">Project *</label>
+                        <select class="form-select" name="project" required>
+                            {% for proj in projects %}
+                                <option value="{{ proj.project_id }}" {% if task.project_id == proj.project_id %}selected{% endif %}>
+                                    {{ proj.project_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Task Type *</label>
+                        <select class="form-select" name="task_type" required>
+                            {% for tt in task_types %}
+                                <option value="{{ tt.TaskTypeId }}" {% if task.task_type_id == tt.TaskTypeId %}selected{% endif %}>
+                                    {{ tt.TaskType }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Date *</label>
+                        <input type="date" class="form-control" name="date" value="{{ task.date }}" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Start Time *</label>
+                        <input type="time" class="form-control" name="start_time" value="{{ task.start_time }}" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Hours Spent</label>
+                        <input type="number" step="0.1" class="form-control" name="hours_spent" value="{{ task.hours_spent|default:'' }}">
+                    </div>
+
+                    <div class="col-12 text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-update-task">Update Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -79,25 +79,18 @@
         <form method="post" action="{% url 'login' %}" class="mt-3">
             {% csrf_token %}
             <div class="mb-3 text-start">
-                <label for="company_id" class="form-label">Company ID</label>
-                <input type="text" class="form-control" id="company_id" name="company_id" placeholder="Company ID" required>
+                <!-- <label for="company_id" class="form-label">Company ID</label> -->
+                <input type="text" class="form-control" id="company_id" name="company_id" placeholder=" Company ID" required>
             </div>
 
             <div class="mb-3 text-start">
-                <label for="mobile_no" class="form-label">Mobile Number</label>
-                <input type="text" class="form-control" id="mobile_no" name="mobile_no" placeholder="Mobile Number" required>
+                <!-- <label for="mobile_no" class="form-label">Mobile Number</label> -->
+                <input type="text" class="form-control" id="mobile_no" name="mobile_no" placeholder="Mobile number" required>
             </div>
 
             <div class="mb-3 text-start">
-                <label for="pin" class="form-label">PIN</label>
-                <div class="input-group">
-                    <input type="password" class="form-control" id="pin" name="pin" placeholder="PIN" required>
-                    <span class="input-group-text" id="togglePin"><i class="bi bi-eye"></i></span>
-                </div>
-            </div>
-
-            <div class="text-center mt-4">
-                <button type="submit" class="btn btn-custom">LOGIN</button>
+                <!-- <label for="pin" class="form-label">PIN</label> -->
+                <input type="password" class="form-control" id="pin" name="pin" placeholder="4-digit PIN" required>
             </div>
         </form>
     </div>

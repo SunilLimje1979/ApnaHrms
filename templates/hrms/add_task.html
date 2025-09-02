@@ -1,0 +1,195 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add New Task</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            padding-top: 55px;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #254b76;
+            height: 55px;
+        }
+        .navbar-brand { color: white; font-size: 20px; }
+
+        /* --- NEW STYLES FOR THE FORM --- */
+        .card {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-radius: 0.75rem;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #254b76;
+            box-shadow: 0 0 0 0.25rem rgba(37, 75, 118, 0.25);
+        }
+        .btn-create-task {
+            background-color: #254b76; /* Theme color */
+            border-color: #254b76;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            width: 100%; /* Full width button */
+        }
+        .btn-create-task:hover {
+            background-color: #1e3c5e;
+            border-color: #1e3c5e;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top">
+    <div class="container-fluid d-flex align-items-center justify-content-center position-relative">
+        <a href="{% url 'dashboard' %}" class="btn btn-link text-white me-2 p-0 fs-4" style="position: absolute; left: 15px;">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <span class="navbar-brand mb-0" style="font-size: 18px;">Add New Task</span>
+    </div>
+</nav>
+
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header bg-light">
+                Task for: <strong>{{ user_profile.first_name }} {{ user_profile.last_name }}</strong>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" class="row g-4">
+                    {% csrf_token %}
+
+                    <div class="col-12">
+                        <label class="form-label">Project *</label>
+                        <select class="form-select" name="project" required {% if not projects %}disabled{% endif %}>
+                            <option value="">-- Select Project --</option>
+                            {% for proj in projects %}
+                                <option value="{{ proj.project_id }}" {% if form_data.project == proj.project_id|stringformat:"s" %}selected{% endif %}>
+                                    {{ proj.project_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Task Type *</label>
+                        <select class="form-select" name="task_type" required {% if not task_types %}disabled{% endif %}>
+                            <option value="">-- Select Task Type --</option>
+                            {% for tt in task_types %}
+                                <option value="{{ tt.TaskTypeId }}" {% if form_data.task_type == tt.TaskTypeId|stringformat:"s" %}selected{% endif %}>
+                                    {{ tt.TaskType }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+
+
+                    <div class="col-12">
+                        <label class="form-label">Date *</label>
+                        <input type="date" class="form-control" id="task-date-input" name="date" value="{{ form_data.date|default:today|date:'Y-m-d' }}" required>
+                        <div id="date-warning" class="text-danger small mt-1"></div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Start Time *</label>
+                        <input type="time" class="form-control" name="start_time" value="{{ form_data.start_time }}" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Hours Spent</label>
+                        <input type="number" step="0.1" class="form-control" id="hours-spent-input" name="hours_spent" value="{{ form_data.hours_spent }}">
+                    </div>
+
+                    <div class="col-12 text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-create-task">Create Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- REMOVED the broken JavaScript for the drawer -->
+
+
+     <!-- START: Add this new JavaScript block in your standard format -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('task-date-input');
+            const hoursInput = document.getElementById('hours-spent-input');
+            const warningDiv = document.getElementById('date-warning');
+            
+            // This is our main function to check the date
+            async function checkDateStatus() {
+                const selectedDate = dateInput.value;
+                const employeeId = '{{ user_profile.employee_id }}';
+                const apiUrl = '{{ check_date_api_url }}'; // URL passed from the view
+
+                if (!selectedDate || !employeeId) return;
+
+                const payload = {
+                    employee_id: employeeId,
+                    date: selectedDate
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    // Clear any previous warnings
+                    warningDiv.textContent = '';
+                    
+                    // Check the response in your standard format
+                    if (result.message_code === 1000) {
+                        const data = result.message_data;
+                        if (data.is_sunday) {
+                            warningDiv.textContent = 'Note: This date is a Sunday.';
+                            hoursInput.value = '0';
+                        } else if (data.is_holiday) {
+                            warningDiv.textContent = `Note: This date is a holiday (${data.holiday_reason}).`;
+                            hoursInput.value = '0';
+                        } else {
+                            // Only set to 9 if the user hasn't already typed something
+                            if (hoursInput.value === '' || hoursInput.value === '0') {
+                                hoursInput.value = '9';
+                            }
+                        }
+                    } else {
+                        // Handle API errors if needed
+                        console.error('API Error:', result.message_text);
+                    }
+                } catch (error) {
+                    console.error('Network or parsing error:', error);
+                }
+            }
+
+            // Add the event listener to the date input
+            dateInput.addEventListener('change', checkDateStatus);
+
+            // Run the check once when the page loads to set the initial value
+            checkDateStatus();
+        });
+    </script>
+    <!-- END: New JavaScript block -->
+</body>
+</html>
