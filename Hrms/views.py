@@ -121,7 +121,7 @@ def login_view(request):
         }
 
         try:
-            response = requests.post(api_url, json=payload, timeout=10)
+            response = requests.post(api_url, json=payload,verify=False,timeout=10)
             response.raise_for_status()
 
             data = response.json()
@@ -219,7 +219,7 @@ def add_task(request):
         }
         
         try:
-            response = requests.post(f"{API_BASE_URL}insert_task/", json=payload, timeout=10)
+            response = requests.post(f"{API_BASE_URL}insert_task/", json=payload, verify=False,timeout=10)
             resp_data = response.json()
 
             if response.ok and resp_data.get("message_code") == 1000:
@@ -262,7 +262,7 @@ def task_list(request):
     try:
         api_url = f"{API_BASE_URL}employee_task_list/{employee_id}/"
         
-        response = requests.get(api_url, timeout=10)
+        response = requests.get(api_url, )
 
         if response.ok:
             data = response.json()
@@ -273,6 +273,7 @@ def task_list(request):
     except requests.exceptions.RequestException as e:
         messages.error(request, f"Network Error: Could not connect to the backend to fetch tasks. {e}")
 
+    response = requests.get('https://apnahrms.com/hrms_backend/api/', verify=False, timeout=10)
     return render(request, 'hrms/task_list.html', context)
 
 
@@ -323,7 +324,7 @@ def edit_task(request, task_id):
         }
         
         try:
-            response = requests.put(task_api_url, json=payload, timeout=10)
+            response = requests.put(task_api_url, json=payload, verify=False,timeout=10)
             if response.ok and response.json().get('message_code') == 1000:
                 messages.success(request, "Task updated successfully!")
                 return redirect('task_list')
@@ -339,7 +340,7 @@ def edit_task(request, task_id):
 
     try:
         task_detail_url = f"{API_BASE_URL}task_detail_update/{task_id}/"
-        response = requests.get(task_detail_url, timeout=10)
+        response = requests.get(task_detail_url, verify=False,timeout=10)
         if response.ok:
             context['task'] = response.json().get('message_data', {})
         else:
@@ -367,7 +368,7 @@ def complete_task(request, task_id):
 
             api_url = f"{API_BASE_URL}task_complete_api/{task_id}/"
             
-            response = requests.put(api_url, timeout=10)
+            response = requests.put(api_url, verify=False,timeout=10)
             
             resp_data = response.json()
             if response.ok and resp_data.get('message_code') == 1000:
@@ -403,7 +404,7 @@ def my_team_view(request):
         # Call the backend API to get the team list
         api_url = f"{API_BASE_URL}get_my_team/"
         payload = {"manager_employee_id": manager_employee_id}
-        response = requests.post(api_url, json=payload, timeout=10)
+        response = requests.post(api_url, json=payload, verify=False,timeout=10)
 
         if response.ok and response.json().get('message_code') == 1000:
             context['team_members'] = response.json().get('message_data', [])
@@ -523,7 +524,7 @@ def team_member_tasks_view(request, employee_id):
             context['to_date'] = to_date_str
 
         # 4. --- Fetch the Tasks ---
-        response = requests.get(api_url, timeout=10)
+        response = requests.get(api_url, verify=False,timeout=10)
         if response.ok and response.json().get('message_code') == 1000:
             context['tasks'] = response.json().get('message_data', [])
         
@@ -556,7 +557,7 @@ def approve_task_view(request):
         try:
             api_url = f"{API_BASE_URL}approve_employee_task/"
             payload = {"task_id": task_id, "approved_by_id": manager_user_id}
-            response = requests.put(api_url, json=payload, timeout=10)
+            response = requests.put(api_url, json=payload, verify=False,timeout=10)
             
             resp_data = response.json()
             if response.ok and resp_data.get('message_code') == 1000:
@@ -596,7 +597,7 @@ def reject_task_view(request):
                 "rejected_by_id": manager_user_id,
                 "rejected_reason": rejection_reason
             }
-            response = requests.put(api_url, json=payload, timeout=10)
+            response = requests.put(api_url, json=payload, verify=False,timeout=10)
 
             resp_data = response.json()
             if response.ok and resp_data.get('message_code') == 1000:
@@ -642,7 +643,7 @@ def past_timesheet_view(request, employee_id):
 
         # Call the API with the date range to get the tasks
         api_url = f"{API_BASE_URL}employee_task_list/{employee_id}/?from_date={from_date_str}&to_date={to_date_str}"
-        response = requests.get(api_url, timeout=10)
+        response = requests.get(api_url, verify=False,timeout=10)
 
         if response.ok and response.json().get('message_code') == 1000:
             context['tasks'] = response.json().get('message_data', [])
@@ -854,7 +855,7 @@ def incident_list_view(request):
     try:
         api_url = f"{API_BASE_URL}get_incidents_by_employee/" 
         payload = {'reported_by_id': employee_id}
-        response = requests.post(api_url, json=payload, timeout=10)
+        response = requests.post(api_url, json=payload, verify=False,timeout=10)
 
         if response.ok:
             data = response.json()
@@ -884,7 +885,7 @@ def view_incident_log_view(request, incident_id):
 
     try:
         details_api_url = f"{API_BASE_URL}get_incident_details/{incident_id}/"
-        details_response = requests.get(details_api_url, timeout=10)
+        details_response = requests.get(details_api_url, verify=False,timeout=10)
 
         if not details_response.ok:
             messages.error(request, "Could not fetch incident details.")
@@ -910,7 +911,7 @@ def view_incident_log_view(request, incident_id):
         }
         try:
             update_api_url = f"{API_BASE_URL}remark_incidents/"
-            response = requests.put(update_api_url, json=payload, timeout=10)
+            response = requests.put(update_api_url, json=payload, verify=False,timeout=10)
             resp_data = response.json()
 
             if response.ok and resp_data.get('message_code') == 1000:
