@@ -9,17 +9,70 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import os
 import uuid
+from datetime import date
 
 
-# Create your views here.
+
+
+# API_BASE_URL = "http://127.0.0.1:8002/hrms_backend/api/"
+API_BASE_URL = "https://apnahrms.com/hrms_backend/api/"
+
+# ... (other views) ...
+
 def dashboard(request):
-    return render(request, 'hrms/dashboard.html')
+    """
+    Displays the main dashboard, fetches all necessary user data,
+    and correctly determines if the user is a manager.
+    """
+    if 'user_profile' not in request.session:
+        messages.error(request, "Your session has expired. Please log in.")
+        return redirect('login')
 
-# views.py
-import os
-from django.conf import settings
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+    user_profile = request.session['user_profile']
+    employee_id = user_profile.get('employee_id')
+    
+    context = {
+        'first_name': user_profile.get('first_name', 'User'),
+        'total_hours': "0.00",
+        'is_manager': False
+    }
+
+    if not employee_id:
+        messages.error(request, "Could not find your employee ID in the session.")
+        return render(request, 'hrms/dashboard.html', context)
+
+    try:
+        # API Call 1: Get tasks to calculate total hours
+        tasks_api_url = f"{API_BASE_URL}employee_task_list/{employee_id}/"
+        tasks_response = requests.get(tasks_api_url, timeout=5)
+
+        if tasks_response.ok:
+            tasks_data = tasks_response.json().get('message_data', [])
+            total_hours = sum(
+                float(task.get('hours_spent', 0) or 0)
+                for task in tasks_data
+                if task.get('task_status') == 'Completed'
+            )
+            context['total_hours'] = f"{total_hours:.2f}"
+        else:
+            messages.warning(request, "Could not fetch task data.")
+
+        # API Call 2: Check if the user is a manager
+        team_api_url = f"{API_BASE_URL}get_my_team/"
+        payload = {"manager_employee_id": employee_id}
+        team_response = requests.post(team_api_url, json=payload, timeout=5)
+
+        if team_response.ok:
+            team_data = team_response.json()
+            if team_data.get("message_code") == 1000 and team_data.get("message_data"):
+                context['is_manager'] = True
+
+    except requests.exceptions.RequestException:
+        messages.error(request, "Could not connect to the backend server to load dashboard data.")
+
+    return render(request, 'hrms/dashboard.html', context)
+
+
 
 @csrf_exempt
 def upload_cash_photo(request):
@@ -58,7 +111,8 @@ def login_view(request):
         mobile_no = request.POST.get('mobile_no')
         pin = request.POST.get('pin')
 
-        api_url = "https://drishtis.app/hrms_backend/api/employee_login/"
+        # api_url = "https://drishtis.app/hrms_backend/api/employee_login/"
+        api_url = "https://apnahrms.com/hrms_backend/api/employee_login/"
 
         payload = {
             "company_id": company_id,
@@ -98,420 +152,775 @@ def logout_view(request):
 
 
 
-# your_app/views.py
 
-import requests
-from django.shortcuts import render, redirect
-from django.contrib import messages
 
-def TaskAdd(request):
-    """Shows the task form (GET) and calls the Task Insert API (POST)."""
-    url = "https://drishtis.app/hrms_backend/api/"
 
-    # --- Helper function to get dropdown data. This avoids repeating code. ---
-    def get_dropdown_data():
-        context = {"employees": [], "projects": [], "task_types": []}
-        try:
-            emp_resp = requests.get(f"{url}employee_list_api/", verify=False)
-            proj_resp = requests.get(f"{url}project_list_api/", verify=False)
-            type_resp = requests.get(f"{url}task_type_list_api/", verify=False)
 
-            if emp_resp.ok: context["employees"] = emp_resp.json()
-            if proj_resp.ok: context["projects"] = proj_resp.json()
-            if type_resp.ok: context["task_types"] = type_resp.json()
-        except requests.exceptions.RequestException:
-            messages.error(request, "Could not load dropdown data from the server.")
-        return context
+# API_BASE_URL = "http://127.0.0.1:8002/hrms_backend/api/"
+API_BASE_URL = "https://apnahrms.com/hrms_backend/api/"
 
-    # --- Handle the form submission ---
+def add_task(request):
+    """
+    A view for a logged-in user to add a task for THEMSELVES,
+    with session management handled directly inside the view.
+    """
+
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to add a task.")
+        return redirect('login')
+
+    # If the code reaches this point, the user is definitely logged in.
+    user_profile = request.session.get('user_profile')
+    employee_id = user_profile.get('employee_id')
+
+    if not employee_id:
+        messages.error(request, "Your session is invalid. Please log in again.")
+        return redirect('login')
+
+    context = {
+        "projects": [],
+        "task_types": [],
+        "form_data": {},
+        "user_profile": user_profile,
+        "today": date.today(),
+        "check_date_api_url": f"{API_BASE_URL}check_date_status/" 
+    }
+
+    try:
+        # Fetch Projects
+        proj_url = f"{API_BASE_URL}project_list_api/"
+        proj_resp = requests.get(proj_url, timeout=5)
+        if proj_resp.ok:
+            proj_data = proj_resp.json()
+            context["projects"] = proj_data.get("message_data", proj_data) if isinstance(proj_data, dict) else proj_data
+        else:
+            messages.error(request, f"Error loading Projects (Status: {proj_resp.status_code}).")
+
+        # Fetch Task Types
+        type_url = f"{API_BASE_URL}tasktype_list_api/"
+        type_resp = requests.get(type_url, timeout=5)
+        if type_resp.ok:
+            type_data = type_resp.json()
+            context["task_types"] = type_data.get("message_data", type_data) if isinstance(type_data, dict) else type_data
+        else:
+            messages.error(request, f"Error loading Task Types (Status: {type_resp.status_code}).")
+        
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Network Error: Could not connect to the backend server. {e}")
+        return render(request, "hrms/add_task.html", context)
+
     if request.method == "POST":
         payload = {
-            "employee": request.POST.get("employee"),
+            "employee": employee_id,
             "project": request.POST.get("project"),
             "date": request.POST.get("date"),
             "task_type": request.POST.get("task_type"),
             "start_time": request.POST.get("start_time"),
+            "hours_spent": request.POST.get("hours_spent") or None
         }
-        # Add optional fields to the payload ONLY if they have a value
-        optional_fields = [
-            "end_time", "hours_spent", "billable_YN", "task_status", 
-            "submission_date", "submitted_on", "approved_by_id", 
-            "approved_on", "rejected_reason", "end_date"
-        ]
-        for field in optional_fields:
-            if request.POST.get(field):
-                payload[field] = request.POST.get(field)
-
+        
         try:
-            response = requests.post(f"{url}insert_task/", json=payload, verify=False)
-            response.raise_for_status()  # This will raise an error for 4xx/5xx status codes
+            response = requests.post(f"{API_BASE_URL}insert_task/", json=payload, timeout=10)
             resp_data = response.json()
 
-            if resp_data.get("message_code") == 1000:
-                messages.success(request, "Task Added Successfully!")
-                return redirect("task_list")  # Make sure you have a URL named 'task_list'
+            if response.ok and resp_data.get("message_code") == 1000:
+                messages.success(request, f"Task Added Successfully!")
+                return redirect("add_task") 
             else:
-                messages.error(request, f"API Error: {resp_data.get('message_text', 'Unknown error')}")
+                messages.error(request, f"API Error: {resp_data.get('message_text', 'An unknown error occurred.')}")
+        
+        except requests.exceptions.RequestException:
+            messages.error(request, "Network Error: Failed to connect to create the task.")
 
-        except requests.exceptions.RequestException as e:
-            error_message = "Failed to connect to the Task API."
-            # Try to get a more specific error from the API response if it exists
-            if e.response is not None:
-                try:
-                    error_data = e.response.json()
-                    error_message = error_data.get('message_text', 'An API error occurred.')
-                except ValueError: # If response is not JSON
-                    pass
-            messages.error(request, error_message)
+        context["form_data"] = request.POST
+        return render(request, "hrms/add_task.html", context)
 
-        # --- If submission fails, re-render the form with the user's data ---
-        context = get_dropdown_data()  # We need the dropdowns again
-        context["form_data"] = request.POST  # Pass the submitted data back to the template
-        return render(request, "hrms/tasks_insert.html", context)
-
-    # --- Handle the initial page load (GET request) ---
-    context = get_dropdown_data()
-    return render(request, "hrms/tasks_insert.html", context)
+    return render(request, "hrms/add_task.html", context)
 
 
 
+def task_list(request):
+    """
+    Displays a list of all tasks for the currently logged-in employee.
+    """
 
-def task_list_view(request):
-    """Fetches and displays a list of tasks for the logged-in employee."""
-    # if 'user_profile' not in request.session:
-    #     return redirect('login')
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to view your tasks.")
+        return redirect('login')
 
-    user_profile = request.session.get('user_profile', {})
+    user_profile = request.session['user_profile']
     employee_id = user_profile.get('employee_id')
-    company_id = user_profile.get('Company_Id')
 
-    # if not employee_id or not company_id:
-    #     messages.error(request, "Session invalid. Please log in again.")
-    #     return redirect('login')
+    if not employee_id:
+        messages.error(request, "Your session is invalid. Please log in again.")
+        return redirect('login')
 
-    filter_date_str = request.GET.get('date', date.today().strftime("%Y-%m-%d"))
-    api_url = "https://drishtis.app/hrms_backend/api/get_timesheets_by_date/"
-    payload = {"employee_id": employee_id, "company_id": company_id, "date": filter_date_str}
-    
-    tasks = []
+    context = {
+        'tasks': [], # Start with an empty list
+        'user_profile': user_profile
+    }
+
     try:
-        response = requests.post(api_url, json=payload, verify=False, timeout=10)
-        response.raise_for_status()
-        resp_data = response.json()
-        if resp_data.get("message_code") == 1000:
-            tasks = resp_data.get("message_data", [])
-    except requests.exceptions.RequestException:
-        messages.error(request, "Could not fetch tasks from the server.")
+        api_url = f"{API_BASE_URL}employee_task_list/{employee_id}/"
+        
+        response = requests.get(api_url, timeout=10)
 
-    context = {'tasks': tasks, 'filter_date': filter_date_str}
+        if response.ok:
+            data = response.json()
+            context['tasks'] = data.get('message_data', [])
+        else:
+            messages.error(request, f"Failed to load tasks. The server responded with status {response.status_code}.")
+
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Network Error: Could not connect to the backend to fetch tasks. {e}")
+
     return render(request, 'hrms/task_list.html', context)
 
 
-def task_complete_view(request, task_id):
-    """Handles the request to complete a task by calling the external API."""
-    if request.method != 'POST':
-        messages.error(request, "Invalid action.")
+
+def edit_task(request, task_id):
+    """
+    GET: Displays a form to edit an existing task.
+    POST: Submits the updated task data to the backend API.
+    """
+
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to edit tasks.")
+        return redirect('login')
+
+    context = {
+        "task": {},
+        "projects": [],
+        "task_types": [],
+        "task_id": task_id
+    }
+
+
+    try:
+        proj_resp = requests.get(f"{API_BASE_URL}project_list_api/", timeout=5)
+        if proj_resp.ok:
+            proj_data = proj_resp.json()
+            context["projects"] = proj_data.get("message_data", proj_data) if isinstance(proj_data, dict) else proj_data
+        
+        type_resp = requests.get(f"{API_BASE_URL}tasktype_list_api/", timeout=5)
+        if type_resp.ok:
+            type_data = type_resp.json()
+            context["task_types"] = type_data.get("message_data", type_data) if isinstance(type_data, dict) else type_data
+            
+    except requests.exceptions.RequestException:
+        messages.error(request, "Network Error: Could not load data for the edit form.")
         return redirect('task_list')
 
-    api_url = f"https://drishtis.app/hrms_backend/api/task_complete_api/{task_id}/"
-    try:
-        response = requests.put(api_url, verify=False, timeout=10)
-        response.raise_for_status()
-        resp_data = response.json()
-        if resp_data.get("message_code") == 1000:
-            messages.success(request, "Task successfully marked as complete!")
-        else:
-            messages.error(request, f"Could not complete task: {resp_data.get('message_text', 'API error')}")
-    except requests.exceptions.RequestException:
-        messages.error(request, "Failed to connect to the server to complete the task.")
 
-    # Redirect back to the task list to see the updated status
-    referer_url = request.META.get('HTTP_REFERER')
-    if referer_url:
-        return redirect(referer_url) # Go back to the exact page the user was on
+    task_api_url = f"{API_BASE_URL}task_detail_update/{task_id}/"
+
+    if request.method == 'POST':
+        payload = {
+            "project": request.POST.get("project"),
+            "date": request.POST.get("date"),
+            "task_type": request.POST.get("task_type"),
+            "start_time": request.POST.get("start_time"),
+            "hours_spent": request.POST.get("hours_spent") or None
+        }
+        
+        try:
+            response = requests.put(task_api_url, json=payload, timeout=10)
+            if response.ok and response.json().get('message_code') == 1000:
+                messages.success(request, "Task updated successfully!")
+                return redirect('task_list')
+            else:
+                resp_data = response.json()
+                messages.error(request, f"API Error: {resp_data.get('message_text', 'Failed to update task.')}")
+        except requests.exceptions.RequestException:
+            messages.error(request, "Network Error: Failed to connect to update the task.")
+        
+        context['task'] = payload
+        return render(request, 'hrms/edit_task.html', context)
+
+
+    try:
+        task_detail_url = f"{API_BASE_URL}task_detail_update/{task_id}/"
+        response = requests.get(task_detail_url, timeout=10)
+        if response.ok:
+            context['task'] = response.json().get('message_data', {})
+        else:
+            messages.error(request, "Could not fetch task details to edit.")
+            return redirect('task_list')
+    except requests.exceptions.RequestException:
+        messages.error(request, "Network Error: Failed to fetch task details.")
+        return redirect('task_list')
+
+    return render(request, 'hrms/edit_task.html', context)
+
+
+
+def complete_task(request, task_id):
+    """
+    Handles the 'Complete Task' button click.
+    Calls the backend API to mark a task as completed.
+    """
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to perform this action.")
+        return redirect('login')
+
+    if request.method == 'POST':
+        try:
+
+            api_url = f"{API_BASE_URL}task_complete_api/{task_id}/"
+            
+            response = requests.put(api_url, timeout=10)
+            
+            resp_data = response.json()
+            if response.ok and resp_data.get('message_code') == 1000:
+                messages.success(request, "Task marked as complete!")
+            else:
+                messages.error(request, f"API Error: {resp_data.get('message_text', 'Could not complete task.')}")
+
+        except requests.exceptions.RequestException as e:
+            messages.error(request, f"Network Error: Could not connect to complete the task. {e}")
     return redirect('task_list')
 
 
 
+# Hrms/views.py
+# ... (keep all your other views and imports)
 
-def team_approvals_view(request):
+def my_team_view(request):
     """
-    Shows a list of all 'Completed' tasks from the manager's team members
-    that are awaiting approval.
+    Displays a list of employees who report to the logged-in manager.
     """
-    # if 'user_profile' not in request.session:
-    #     return redirect('login')
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to view your team.")
+        return redirect('login')
 
-    user_profile = request.session.get('user_profile', {})
-    manager_employee_id = user_profile.get('employee_id')
-    api_base_url = "https://drishtis.app/hrms_backend/api/"
+    manager_profile = request.session['user_profile']
+    manager_employee_id = manager_profile.get('employee_id')
     
-    team_tasks_for_approval = []
-    
-    # 1. First, get the list of team members
-    try:
-        team_response = requests.post(f"{api_base_url}get_my_team/", json={"manager_employee_id": manager_employee_id}, verify=False)
-        if team_response.ok:
-            team_members = team_response.json().get("message_data", [])
-            
-            # 2. For each team member, get their timesheet for today (or a filtered date)
-            for member in team_members:
-                member_id = member.get('employee_id')
-                from datetime import date
-                today_str = date.today().strftime('%Y-%m-%d')
-                
-                payload = {
-                    "manager_employee_id": manager_employee_id,
-                    "team_member_employee_id": member_id,
-                    "date": today_str  # For now, we fetch today's tasks. A filter could be added.
-                }
-                timesheet_response = requests.post(f"{api_base_url}get_team_member_timesheet_by_date_and_id/", json=payload, verify=False)
-                
-                if timesheet_response.ok:
-                    tasks_data = timesheet_response.json().get("message_data", {})
-                    tasks = tasks_data.get("tasks", [])
-                    
-                    # 3. Filter for only 'Completed' tasks and add employee info
-                    for task in tasks:
-                        if task.get('task_status') == 'Completed':
-                            task['employee_name'] = member.get('full_name') # Add name for display
-                            team_tasks_for_approval.append(task)
-
-    except requests.RequestException:
-        messages.error(request, "Could not connect to the server to fetch team tasks.")
-
     context = {
-        'tasks_for_approval': team_tasks_for_approval
+        'team_members': []
     }
-    return render(request, 'hrms/team_approvals.html', context)
-
-
-
-
-def task_approve_view(request, task_id):
-    """Handles the manager's action to approve a task."""
-    if request.method != 'POST':
-        return redirect('team_approvals')
-
-    user_profile = request.session.get('user_profile', {})
-    # Your API for approval needs the Django User ID, which you store as 'user_Id' in the session
-    approver_user_id = user_profile.get('user_Id') 
-
-    if not approver_user_id:
-        messages.error(request, "Your user ID is missing from the session. Cannot approve.")
-        return redirect('team_approvals')
-
-    api_url = "https://drishtis.app/hrms_backend/api/approve_employee_task/"
-    payload = {"task_id": task_id, "approved_by_id": approver_user_id}
-    
-    try:
-        response = requests.put(api_url, json=payload, verify=False)
-        if response.ok and response.json().get("message_code") == 1000:
-            messages.success(request, "Task approved successfully.")
-        else:
-            messages.error(request, f"Failed to approve task: {response.json().get('message_text')}")
-    except requests.RequestException:
-        messages.error(request, "Connection error while approving task.")
-        
-    return redirect('team_approvals')
-
-
-def task_reject_view(request, task_id):
-    """Handles the manager's action to reject a task."""
-    if request.method != 'POST':
-        return redirect('team_approvals')
-
-    user_profile = request.session.get('user_profile', {})
-    # Your API for rejection needs the Django User ID
-    rejector_user_id = user_profile.get('user_Id')
-    reason = request.POST.get('rejection_reason', 'No reason provided.')
-
-    if not rejector_user_id:
-        messages.error(request, "Your user ID is missing from the session. Cannot reject.")
-        return redirect('team_approvals')
-
-    api_url = "https://drishtis.app/hrms_backend/api/reject_employee_task/"
-    payload = {"task_id": task_id, "rejected_by_id": rejector_user_id, "rejected_reason": reason}
 
     try:
-        response = requests.put(api_url, json=payload, verify=False)
-        if response.ok and response.json().get("message_code") == 1000:
-            messages.success(request, "Task rejected successfully.")
+        # Call the backend API to get the team list
+        api_url = f"{API_BASE_URL}get_my_team/"
+        payload = {"manager_employee_id": manager_employee_id}
+        response = requests.post(api_url, json=payload, timeout=10)
+
+        if response.ok and response.json().get('message_code') == 1000:
+            context['team_members'] = response.json().get('message_data', [])
         else:
-            messages.error(request, f"Failed to reject task: {response.json().get('message_text')}")
-    except requests.RequestException:
-        messages.error(request, "Connection error while rejecting task.")
+            messages.error(request, f"Could not load team members. API Error: {response.json().get('message_text')}")
 
-    return redirect('team_approvals')
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Network Error: Could not connect to fetch team data. {e}")
+
+    return render(request, 'hrms/my_team.html', context)
 
 
-
-
-# hrms/views.py
-# Replace the existing team_approvals_view with this updated version
-
-def team_approvals_view(request):
-    """
-    Shows a list of tasks from the manager's team members,
-    with filters for date and status.
-    """
-    # if 'user_profile' not in request.session:
-    #     return redirect('login')
-
-    user_profile = request.session.get('user_profile', {})
-    manager_employee_id = user_profile.get('employee_id')
-    api_base_url = "https://drishtis.app/hrms_backend/api/"
+# def team_member_tasks_view(request, employee_id):
+#     """
+#     Displays tasks for a specific team member for the manager to review.
+#     """
+#     if 'user_profile' not in request.session:
+#         messages.error(request, "You must be logged in to view team tasks.")
+#         return redirect('login')
     
-    # --- 1. Get Filter Values from the URL ---
-    # The URL will look like: /team/approvals/?from_date=...&to_date=...&status=...
-    from datetime import date, timedelta
+#      # --- THIS IS THE NEW LOGIC ---
+#     today = date.today()
+#     # 1. Get dates from the URL. If they don't exist, use the 1st of the month and today as defaults.
+#     from_date_str = request.GET.get('from_date', today.replace(day=1).strftime('%Y-%m-%d'))
+#     to_date_str = request.GET.get('to_date', today.strftime('%Y-%m-%d'))
+
+#     context = {
+#         'tasks': [], 
+#         'team_member': None,
+#         'from_date': from_date_str, # 2. Pass these dates back to the template
+#         'to_date': to_date_str
+#     }
+#     # --- END OF NEW LOGIC ---
+
+#     context = {'tasks': [], 'team_member': None}
+
+#     try:
+#         # Get all tasks for the selected team member
+#         api_url = f"{API_BASE_URL}employee_task_list/{employee_id}/"
+#         response = requests.get(api_url, timeout=10)
+
+#         if response.ok and response.json().get('message_code') == 1000:
+#             tasks_data = response.json().get('message_data', [])
+#             context['tasks'] = tasks_data
+            
+#             # For displaying the team member's name, find them in the API response
+#             if tasks_data:
+#                  # We need to fetch the employee name. The simplest way is another small API call or to pass it.
+#                  # For simplicity, we assume we can construct it or it's part of the task data.
+#                  # Let's assume the employee name can be fetched if needed, or we just show the ID.
+#                  # To get the name, let's call the employee list once.
+#                  emp_list_resp = requests.get(f"{API_BASE_URL}employee_list/", timeout=5)
+#                  if emp_list_resp.ok:
+#                      for emp in emp_list_resp.json():
+#                          if emp['employee_id'] == employee_id:
+#                              context['team_member'] = emp
+#                              break
+#         else:
+#             messages.error(request, "Could not load tasks for this team member.")
+
+#     except requests.exceptions.RequestException as e:
+#         messages.error(request, f"Network Error: Could not fetch tasks. {e}")
+
+#     return render(request, 'hrms/team_member_tasks.html', context)
+
+
+
+# Hrms/views.py
+from datetime import date
+import requests
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+# ... (other views like dashboard, add_task, etc.) ...
+
+def team_member_tasks_view(request, employee_id):
+    """
+    Displays tasks for a specific team member. 
+    Shows ALL tasks by default, or filters by date range if a search is performed.
+    """
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to view team tasks.")
+        return redirect('login')
     
-    # Default to today if no dates are provided
+    # 1. --- Prepare the Context and Default Dates for the FORM ---
     today = date.today()
-    from_date_str = request.GET.get('from_date', today.strftime('%Y-%m-%d'))
-    to_date_str = request.GET.get('to_date', today.strftime('%Y-%m-%d'))
-    status_filter = request.GET.get('status', 'Completed') # Default to show 'Completed' tasks
+    context = {
+        'tasks': [], 
+        'team_member': None,
+        # These dates are ONLY for populating the hidden form fields
+        'from_date': today.replace(day=1).strftime('%Y-%m-%d'),
+        'to_date': today.strftime('%Y-%m-%d')
+    }
 
-    # Convert string dates to date objects to loop through them
-    from_date_obj = date.fromisoformat(from_date_str)
-    to_date_obj = date.fromisoformat(to_date_str)
-    
-    all_team_tasks = []
-    
-    # --- 2. Call APIs using the filters ---
     try:
-        # Get the list of team members once
-        team_response = requests.post(f"{api_base_url}get_my_team/", json={"manager_employee_id": manager_employee_id}, verify=False)
-        if not team_response.ok:
-            messages.error(request, "Could not fetch your team list.")
-            raise requests.RequestException # Stop processing
+        # 2. --- Fetch Employee Details (Always) ---
+        emp_resp = requests.get(f"{API_BASE_URL}employee_update/{employee_id}/", timeout=5)
+        if emp_resp.ok:
+            context['team_member'] = emp_resp.json()
+        else:
+            messages.error(request, "Could not find the specified team member.")
+            return redirect('my_team')
 
-        team_members = team_response.json().get("message_data", [])
+        # 3. --- Build the API URL Intelligently ---
+        # Start with the base URL to get ALL tasks
+        api_url = f"{API_BASE_URL}employee_task_list/{employee_id}/"
+
+        # Check if the user has performed a date search
+        from_date_str = request.GET.get('from_date')
+        to_date_str = request.GET.get('to_date')
+
+        # If they searched, add the date filters to the API call
+        if from_date_str and to_date_str:
+            api_url += f"?from_date={from_date_str}&to_date={to_date_str}"
+            # Also, update the context to keep the searched dates in the form
+            context['from_date'] = from_date_str
+            context['to_date'] = to_date_str
+
+        # 4. --- Fetch the Tasks ---
+        response = requests.get(api_url, timeout=10)
+        if response.ok and response.json().get('message_code') == 1000:
+            context['tasks'] = response.json().get('message_data', [])
         
-        # Loop through each day in the selected date range
-        current_date = from_date_obj
-        while current_date <= to_date_obj:
-            date_to_fetch = current_date.strftime('%Y-%m-%d')
-            
-            # For each day, get tasks for every team member
-            for member in team_members:
-                payload = {
-                    "manager_employee_id": manager_employee_id,
-                    "team_member_employee_id": member.get('employee_id'),
-                    "date": date_to_fetch
-                }
-                timesheet_response = requests.post(f"{api_base_url}get_team_member_timesheet_by_date_and_id/", json=payload, verify=False)
-                
-                if timesheet_response.ok:
-                    tasks_data = timesheet_response.json().get("message_data", {})
-                    tasks = tasks_data.get("tasks", [])
-                    
-                    for task in tasks:
-                        task['employee_name'] = member.get('full_name') # Add employee name for display
-                        all_team_tasks.append(task)
-            
-            current_date += timedelta(days=1) # Move to the next day
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Network Error: Could not fetch data. {e}")
 
-    except requests.RequestException:
-        messages.error(request, "There was an error connecting to the timesheet server.")
-
-    # --- 3. Filter the results by status ---
-    filtered_tasks = []
-    if status_filter != 'all':
-        for task in all_team_tasks:
-            # Handle both 'Started' (incomplete) and other statuses
-            if status_filter == 'Incomplete':
-                if task.get('task_status') == 'Started':
-                    filtered_tasks.append(task)
-            elif task.get('task_status') == status_filter:
-                filtered_tasks.append(task)
-    else:
-        filtered_tasks = all_team_tasks
-
-    # --- 4. Send all data to the template ---
-    context = {
-        'tasks_for_approval': filtered_tasks,
-        'filters': {
-            'from_date': from_date_str,
-            'to_date': to_date_str,
-            'status': status_filter
-        }
-    }
-    return render(request, 'hrms/team_approvals.html', context)
+    # 5. --- Render the Page ---
+    return render(request, 'hrms/team_member_tasks.html', context)
 
 
 
 
-def timesheet_page_view(request):
+def approve_task_view(request):
     """
-    A comprehensive view that handles both the employee's own timesheet 
-    and their team's timesheets if they are a manager.
+    Handles the 'Approve' button click from the manager's view.
     """
-    # if 'user_profile' not in request.session:
-    #     return redirect('login')
+    if 'user_profile' not in request.session:
+        messages.error(request, "Session expired. Please log in.")
+        return redirect('login')
 
-    user_profile = request.session.get('user_profile', {})
-    employee_id = user_profile.get('employee_id')
-    company_id = user_profile.get('Company_Id')
-    api_base_url = "https://drishtis.app/hrms_backend/api/"
-    
-    # --- Determine the active tab from the URL (e.g., ?view=my_team) ---
-    active_view = request.GET.get('view', 'my_timesheet')
+    if request.method == 'POST':
+        task_id = request.POST.get('task_id')
+        team_member_id = request.POST.get('employee_id')
+        manager_user_id = request.session['user_profile'].get('user_id') # Assumes user_id is in session
 
-    # --- Prepare data for the template ---
-    context = {
-        'user_profile': user_profile,
-        'active_view': active_view,
-        'my_tasks': [],
-        'team_members': [],
-        'selected_team_member_tasks': None,
-        'selected_team_member_id': None,
-        'filters': {}
-    }
+        if not manager_user_id:
+            messages.error(request, "Your user ID could not be found in your session.")
+            return redirect('my_team')
 
-    # --- 1. Fetch data for the logged-in user's own timesheet ("My Timesheet" tab) ---
-    from datetime import date
-    my_timesheet_date = request.GET.get('my_date', date.today().strftime('%Y-%m-%d'))
-    context['filters']['my_date'] = my_timesheet_date
-    
-    my_payload = {"employee_id": employee_id, "company_id": company_id, "date": my_timesheet_date}
-    try:
-        response = requests.post(f"{api_base_url}get_timesheets_by_date/", json=my_payload, verify=False)
-        if response.ok:
-            context['my_tasks'] = response.json().get("message_data", [])
-    except requests.RequestException:
-        messages.error(request, "Could not fetch your personal tasks.")
-
-    # --- 2. Fetch data for the manager's team ("My Team" tab) ---
-    # First, get the list of team members to see if the "My Team" tab should even be shown.
-    try:
-        team_response = requests.post(f"{api_base_url}get_my_team/", json={"manager_employee_id": employee_id}, verify=False)
-        if team_response.ok:
-            context['team_members'] = team_response.json().get("message_data", [])
-    except requests.RequestException:
-        # Don't show an error, just means the team list won't load
-        pass
-
-    # If the user is actively viewing the "My Team" tab and has selected a member...
-    if active_view == 'my_team':
-        selected_member_id = request.GET.get('team_member_id')
-        if selected_member_id:
-            context['selected_team_member_id'] = int(selected_member_id)
-            team_filter_date = request.GET.get('team_date', date.today().strftime('%Y-%m-%d'))
-            context['filters']['team_date'] = team_filter_date
+        try:
+            api_url = f"{API_BASE_URL}approve_employee_task/"
+            payload = {"task_id": task_id, "approved_by_id": manager_user_id}
+            response = requests.put(api_url, json=payload, timeout=10)
             
-            team_payload = {
-                "manager_employee_id": employee_id,
-                "team_member_employee_id": selected_member_id,
-                "date": team_filter_date
+            resp_data = response.json()
+            if response.ok and resp_data.get('message_code') == 1000:
+                messages.success(request, "Task approved successfully!")
+            else:
+                messages.error(request, f"API Error: {resp_data.get('message_text')}")
+        except requests.exceptions.RequestException as e:
+            messages.error(request, f"Network Error: {e}")
+
+        return redirect('team_member_tasks', employee_id=team_member_id)
+
+    return redirect('my_team')
+
+
+def reject_task_view(request):
+    """
+    Handles the 'Reject' button click from the manager's view.
+    """
+    if 'user_profile' not in request.session:
+        messages.error(request, "Session expired. Please log in.")
+        return redirect('login')
+
+    if request.method == 'POST':
+        task_id = request.POST.get('task_id')
+        team_member_id = request.POST.get('employee_id')
+        rejection_reason = request.POST.get('rejection_reason', 'Rejected by manager.')
+        manager_user_id = request.session['user_profile'].get('user_id')
+
+        if not manager_user_id:
+            messages.error(request, "Your user ID could not be found in your session.")
+            return redirect('my_team')
+
+        try:
+            api_url = f"{API_BASE_URL}reject_employee_task/"
+            payload = {
+                "task_id": task_id,
+                "rejected_by_id": manager_user_id,
+                "rejected_reason": rejection_reason
             }
-            try:
-                response = requests.post(f"{api_base_url}get_team_member_timesheet_by_date_and_id/", json=team_payload, verify=False)
-                if response.ok:
-                    context['selected_team_member_tasks'] = response.json().get("message_data", {})
-                else:
-                    messages.error(request, f"Could not fetch timesheet for team member.")
-            except requests.RequestException:
-                messages.error(request, "Could not fetch team member's timesheet.")
+            response = requests.put(api_url, json=payload, timeout=10)
 
-    return render(request, 'hrms/timesheet_page.html', context)
+            resp_data = response.json()
+            if response.ok and resp_data.get('message_code') == 1000:
+                messages.success(request, "Task rejected successfully!")
+            else:
+                messages.error(request, f"API Error: {resp_data.get('message_text')}")
+        except requests.exceptions.RequestException as e:
+            messages.error(request, f"Network Error: {e}")
+
+        return redirect('team_member_tasks', employee_id=team_member_id)
+
+    return redirect('my_team')    
+
+
+
+def past_timesheet_view(request, employee_id):
+    """
+    Shows a date search form and displays ALL tasks for an employee
+    within the selected date range.
+    """
+    if 'user_profile' not in request.session:
+        return redirect('login')
+
+    today = date.today()
+    from_date_str = request.GET.get('from_date', today.replace(day=1).strftime('%Y-%m-%d'))
+    to_date_str = request.GET.get('to_date', today.strftime('%Y-%m-%d'))
+
+    context = {
+        'tasks': [],
+        'team_member': None,
+        'from_date': from_date_str,
+        'to_date': to_date_str
+    }
+
+    try:
+        # Fetch employee details first
+        emp_resp = requests.get(f"{API_BASE_URL}employee_update/{employee_id}/", timeout=5)
+        if emp_resp.ok:
+            context['team_member'] = emp_resp.json()
+        else:
+            messages.error(request, "Could not find the specified team member.")
+            return redirect('my_team')
+
+        # Call the API with the date range to get the tasks
+        api_url = f"{API_BASE_URL}employee_task_list/{employee_id}/?from_date={from_date_str}&to_date={to_date_str}"
+        response = requests.get(api_url, timeout=10)
+
+        if response.ok and response.json().get('message_code') == 1000:
+            context['tasks'] = response.json().get('message_data', [])
+
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Network Error: Could not fetch data. {e}")
+
+    return render(request, 'hrms/past_timesheet.html', context)
+
+
+
+# your_APNA_HRMS_app/views.py
+ADMIN_PANEL_URL = "http://127.0.0.1:8000" # Change port if needed
+
+def employee_holiday_list_view(request):
+    # 1. Check if the user is logged in by looking for their profile in the session.
+    if 'user_profile' not in request.session:
+        messages.error(request, "Please log in to view this page.")
+        return redirect('login') # Redirect to your employee login page name
+
+    user_profile = request.session['user_profile']
+    employee_id = user_profile.get('employee_id')
+
+    if not employee_id:
+        messages.error(request, "Your session is invalid. Please log in again.")
+        return redirect('login')
+
+    holidays = []
+    company_info = {}
+    
+    try:
+        # 2. Call the API to find out which company this employee belongs to.
+        comp_api_url = f"{API_BASE_URL}get_employee_company/{employee_id}/"
+        comp_response = requests.get(comp_api_url)
+        
+        if comp_response.status_code == 200:
+            company_info = comp_response.json().get("message_data", {})
+            company_id = company_info.get("company_id")
+
+            # 3. If a company was found, make ONE API call to get its holidays.
+            if company_id:
+                holiday_api_url = f"{API_BASE_URL}get_holidays/"
+                payload = {'company_id': company_id}
+                holiday_response = requests.post(holiday_api_url, json=payload)
+                if holiday_response.status_code == 200:
+                    holidays = holiday_response.json().get("message_data", [])
+                    for holiday in holidays:
+                        date_str = holiday.get('actual_date')
+                        if date_str:
+                            date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+                            holiday['actual_date'] = date_obj.strftime('%d/%m/%y')
+        else:
+            # This is the error you were seeing. It means the employee has no company assigned.
+            messages.error(request, "Could not determine your assigned company.")
+
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Could not connect to the server: {e}")
+
+    context = {
+        'holidays': holidays,
+        'company_info': company_info,
+        'admin_panel_url': ADMIN_PANEL_URL,
+        'first_name': user_profile.get('first_name', 'Employee')
+    }
+    return render(request, 'holidays/employee_holiday_list.html', context)
+
+
+
+# your_APNA_HRMS_app/views.py
+
+# Make sure these imports are at the top of the file
+import os
+import datetime
+from django.conf import settings
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from io import BytesIO
+from xhtml2pdf import pisa
+# ... and your other imports
+
+def holiday_download_pdf_view(request):
+    # This logic now lives inside your APNA HRMS project
+    company_id = request.GET.get('company_id')
+    company_name = request.GET.get('company_name', 'Report')
+
+    if not company_id:
+        # In a real app, you'd show an error, but for simplicity, we'll return an empty response
+        return HttpResponse("Company ID is required.", status=400)
+
+    api_url = f"{API_BASE_URL}get_holidays/"
+    payload = {'company_id': company_id}
+    response = requests.post(api_url, json=payload)
+    holidays = response.json().get("message_data", [])
+
+    for holiday in holidays:
+        # The date from the API is a string like "2025-08-28"
+        date_str = holiday.get('actual_date')
+        if date_str:
+            # Convert the string to a datetime object
+            date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+            # Format it back into the "dd/mm/yy" string and update the dictionary
+            holiday['actual_date'] = date_obj.strftime('%d/%m/%y')
+
+    context = {'holidays': holidays, 'company_name_for_title': company_name}
+    html_string = render_to_string('holidays/pdf_template.html', context)
+    
+    result = BytesIO()
+    pisa.CreatePDF(BytesIO(html_string.encode("UTF-8")), dest=result)
+    pdf_file = result.getvalue()
+
+    # NOTE: This will only save the file if your APNA HRMS project has MEDIA_ROOT set up.
+    # If not, it will still download correctly.
+    if hasattr(settings, 'MEDIA_ROOT'):
+        safe_company_name = company_name.replace(' ', '_')
+        pdf_save_dir = os.path.join(settings.MEDIA_ROOT, 'pdf', str(company_id), safe_company_name)
+        os.makedirs(pdf_save_dir, exist_ok=True)
+        filename = f"holiday_report_{safe_company_name}_{datetime.datetime.now().strftime('%d-%m-%y')}.pdf"
+        pdf_save_path = os.path.join(pdf_save_dir, filename)
+        with open(pdf_save_path, 'wb') as f:
+            f.write(pdf_file)
+    else:
+        filename = "holiday_report.pdf"
+        
+    view_type = request.GET.get('view', 'attachment')
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = f'{view_type}; filename="{filename}"'
+    
+    return response
+
+# incidence --------------
+
+
+
+
+def add_incident_view(request):
+    """
+    GET: Renders the form to add a new incident.
+    POST: Submits the new incident data to the backend API.
+    """
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to report an incident.")
+        return redirect('login')
+
+    user_profile = request.session['user_profile']
+    employee_id = user_profile.get('employee_id')
+    user_id = user_profile.get('user_id') 
+
+    if not employee_id or not user_id:
+        messages.error(request, "Your session is invalid. Please log in again.")
+        return redirect('login')
+
+    if request.method == 'POST':
+        payload = {
+            'reported_by': employee_id,
+            'created_by': user_id,
+            'title': request.POST.get('title'),
+            'description': request.POST.get('description'),
+            'severity': request.POST.get('severity'),
+            'incident_department': request.POST.get('incident_department')
+        }
+        
+        photos = request.FILES.getlist('photos')
+        files_to_send = [('photos', (photo.name, photo.read(), photo.content_type)) for photo in photos]
+
+        try:
+            api_url = f"{API_BASE_URL}incidents_add/"
+
+             # --- DEBUGGING PRINTS ---
+            # print("--- Sending Request to API ---")
+            # print(f"URL: {api_url}")
+            # print(f"Payload (Data): {payload}")
+            # print(f"Files to send: {[f[0] for f in files_to_send]}") # Print just the keys to avoid large output
+            # --- END DEBUGGING ---
+            response = requests.post(api_url, data=payload, files=files_to_send, timeout=15)
+            
+            resp_data = response.json()
+            if response.status_code == 201 and resp_data.get('message_code') == 1000:
+                messages.success(request, "Incident reported successfully!")
+                return redirect('incident_list')
+            else:
+                error_msg = resp_data.get('message_text', 'An unknown error occurred.')
+                messages.error(request, f"API Error: {error_msg}")
+
+        except requests.exceptions.RequestException as e:
+            messages.error(request, f"Network Error: Could not connect to the server. {e}")
+        
+        context = {'form_data': request.POST}
+        return render(request, 'incidence/add_incident.html', context)
+
+    return render(request, 'incidence/add_incident.html')
+
+
+def incident_list_view(request):
+    """
+    Displays a list of incidents reported by the logged-in employee.
+    """
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in to view incidents.")
+        return redirect('login')
+
+    user_profile = request.session['user_profile']
+    employee_id = user_profile.get('employee_id')
+
+    context = {'incidents': []}
+    if not employee_id:
+        messages.error(request, "Your session is invalid.")
+        return redirect('login')
+
+    try:
+        api_url = f"{API_BASE_URL}get_incidents_by_employee/" 
+        payload = {'reported_by_id': employee_id}
+        response = requests.post(api_url, json=payload, timeout=10)
+
+        if response.ok:
+            data = response.json()
+            if data.get('message_code') == 1000:
+                context['incidents'] = data.get('message_data', [])
+        else:
+            messages.error(request, f"Failed to load incidents. Server responded with status {response.status_code}.")
+
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Network Error: Could not connect to fetch incidents. {e}")
+
+    return render(request, 'incidence/incident_list.html', context)
+
+
+def view_incident_log_view(request, incident_id):
+    """
+    GET: Displays the conversation log for a specific incident.
+    POST: Adds a new remark to the incident.
+    """
+    if 'user_profile' not in request.session:
+        messages.error(request, "You must be logged in.")
+        return redirect('login')
+
+    user_profile = request.session['user_profile']
+    user_id = user_profile.get('user_id')
+    context = {'incident_id': incident_id}
+
+    try:
+        details_api_url = f"{API_BASE_URL}get_incident_details/{incident_id}/"
+        details_response = requests.get(details_api_url, timeout=10)
+
+        if not details_response.ok:
+            messages.error(request, "Could not fetch incident details.")
+            return redirect('incident_list')
+        
+        incident_data = details_response.json().get('message_data', {})
+        if incident_data.get('remarks_log'):
+            # Split the log and trim whitespace from each entry.
+            incident_data['remarks_log_list'] = [
+                entry.strip() for entry in incident_data['remarks_log'].split('---') if entry.strip()
+            ]
+        context['incident'] = incident_data
+
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f"Network Error: {e}")
+        return redirect('incident_list')
+
+    if request.method == 'POST':
+        payload = {
+            "incident_id": incident_id,
+            "user_id": user_id,
+            "remark_text": request.POST.get("remark_text"),
+        }
+        try:
+            update_api_url = f"{API_BASE_URL}remark_incidents/"
+            response = requests.put(update_api_url, json=payload, timeout=10)
+            resp_data = response.json()
+
+            if response.ok and resp_data.get('message_code') == 1000:
+                messages.success(request, "Your remark has been added.")
+            else:
+                messages.error(request, f"API Error: {resp_data.get('message_text', 'Failed to add remark.')}")
+        except requests.exceptions.RequestException:
+            messages.error(request, "Network Error: Could not submit your remark.")
+        
+        return redirect('view_incident_log', incident_id=incident_id)
+
+    return render(request, 'incidence/view_incident_log.html', context)

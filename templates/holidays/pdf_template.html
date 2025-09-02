@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Holiday List</title>
+    <style>
+        body { font-family: sans-serif; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #cccccc; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        h1 { text-align: center; color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Holiday List - {{ company_name_for_title }}</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Reason</th>
+                <th>Type</th>
+                <th>Company</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for holiday in holidays %}
+            <tr>
+                <td>{{ holiday.actual_date }}</td>
+                <td>{{ holiday.holiday_reason }}</td>
+                <td>{{ holiday.holiday_type|default:"N/A" }}</td>
+                <td>{{ holiday.company_name }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center;">No holidays found for this company.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -2,74 +2,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>My Tasks</title>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Tasks</title>
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
 
-    <!-- Styles copied from dashboard.html for consistency -->
+    <!-- Styles from your Dashboard & Task List Template -->
     <style>
-        body { background-color: #f8f9fa; }
-        .navbar { background-color: #254b76; height: 55px; }
-        .navbar-toggler { border: none; background-color: white; border-radius: 4px; padding: 4px 8px; }
-        .navbar-toggler-icon { display: inline-block; width: 20px; height: 2px; background-color: black; position: relative; }
-        .navbar-toggler-icon::before, .navbar-toggler-icon::after { content: ""; position: absolute; width: 100%; height: 2px; background-color: black; left: 0; }
-        .navbar-toggler-icon::before { top: -6px; }
-        .navbar-toggler-icon::after { top: 6px; }
-        .navbar-brand { color: white; font-size: 20px; margin-left: 20px; }
-        .drawer { position: fixed; top: 55px; left: -100%; width: 70%; height: calc(100% - 55px); background-color: #f8f9fa; transition: left 0.3s ease; padding: 0; box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); z-index: 1000; overflow-y: auto; }
-        .drawer.open { left: 0; }
-        .drawer ul { padding: 10px 20px; font-size: 15px; }
-        .drawer ul li { list-style: none; margin-bottom: 8px; }
-        .drawer ul li a { text-decoration: none; color: #333; font-size: 17px; }
-        .drawer ul li a i { margin-right: 15px; font-size: 20px; }
-        .additional-content { position: sticky; top: 0; background-color: rgb(238, 238, 240); color: white; padding: 10px 0; z-index: 1001; width: 100%; text-align: center; }
-        .additional-content img.logo { display: block; margin: 0 auto; height: 120px; }
-        .drawer-close-btn { background: none; border: none; font-size: 20px; position: absolute; top: 5px; right: 10px; color: black; }
+        body {
+            padding-top: 55px; /* Account for fixed navbar */
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #254b76;
+            height: 55px;
+        }
+        .navbar-brand { color: white; font-size: 20px; margin-left: 10px; }
+
+        /* Styles for Segmented Button Filter */
+        .task-filter .nav-pills {
+            background-color: #e9ecef;
+            border-radius: 0.5rem;
+            padding: 4px;
+        }
+        .task-filter .nav-link {
+            color: #6c757d;
+            border-radius: 0.4rem;
+            padding: 0.4rem 1rem;
+            font-weight: 500;
+        }
+        .task-filter .nav-link.active {
+            background-color: #254b76;
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+                /* --- NEW STYLES --- */
+        .btn-edit-task {
+            background-color: #254b76; /* Theme color for Edit button */
+            border-color: #254b76;
+        }
+        .btn-edit-task:hover {
+            background-color: #1d3a5a; /* A slightly darker shade for hover */
+            border-color: #1d3a5a;
+        }
+        .status-badge-lg {
+            font-size: 0.9rem; /* Larger font size */
+            padding: 0.5em 0.9em; /* More padding */
+        }
     </style>
 </head>
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container-fluid d-flex align-items-center">
-            <button class="navbar-toggler" type="button" id="menuBtn">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <span class="navbar-brand mb-0">My Tasks</span>
+            <a href="{% url 'dashboard' %}" class="btn btn-link text-white me-2 p-0 fs-4">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div class="me-auto"></div>
+            <span class="navbar-brand mb-0" style="font-size: 18px;">My Tasks</span>
+                        <div class="ms-auto"></div>
+            <a href="{% url 'add_task' %}" class="btn btn-sm btn-outline-light"><i class="bi bi-plus-lg"></i> Add Task</a>
         </div>
     </nav>
 
-    <!-- Side Drawer -->
-    <div id="drawer" class="drawer">
-        <div class="additional-content">
-            <img src="{% static 'assets/img/logo.png' %}" alt="Logo" class="logo" style="margin-bottom:0;" />
-            <p style="font-size: 25px;color: #254b76;margin-top:0;" ><b>APNAHRMS</b></p>
-            <button class="drawer-close-btn" onclick="closeDrawer()">&times;</button>
-        </div>
-        <ul>
-            <li><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-calendar-check"></i> Timesheet</a>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{% url 'timesheet_page' %}"><i class="bi bi-list-task me-2"></i>View Timesheets</a></li>
-                    <li><a class="dropdown-item" href="{% url 'TaskAdd' %}"><i class="bi bi-plus-circle me-2"></i>Insert Task</a></li>
-                    <li><a class="dropdown-item" href="{% url 'task_list' %}"><i class="bi bi-list-task me-2"></i>Complete Tasks</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{% url 'team_approvals' %}"><i class="bi bi-people-fill me-2"></i>Team Approvals</a></li>
-                    <li><a class="dropdown-item disabled" href="#"><i class="bi bi-x-circle me-2"></i>Cancel Task</a></li>
-                </ul>
-            </li>
-            <li><a href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-        </ul>
-    </div>
+    <!-- REMOVED: Side Drawer HTML is no longer needed on this page -->
 
-    <!-- Main Content -->
-    <div class="container mt-5 pt-4">
+    <div class="container mt-4">
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
@@ -79,67 +82,103 @@
             {% endfor %}
         {% endif %}
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <form method="GET" class="row g-3 align-items-end">
-                    <div class="col-md-4">
-                        <label for="date" class="form-label">Show tasks for date:</label>
-                        <input type="date" class="form-control" name="date" id="date" value="{{ filter_date }}">
-                    </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary">Filter</button>
-                    </div>
-                </form>
-            </div>
+        <div class="d-flex justify-content-center mb-4 task-filter">
+            <ul class="nav nav-pills" id="taskFilter">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" data-status="active">Active</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-status="completed">Completed</a>
+                </li>
+            </ul>
         </div>
 
         <div class="card">
-            <div class="card-header">
-                Task List
-            </div>
-            <div class="card-body p-0">
-                {% if tasks %}
-                    <ul class="list-group list-group-flush">
-                        {% for task in tasks %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap py-3">
-                            <div class="me-3 mb-2 mb-md-0">
-                                <h6 class="mb-0">{{ task.project_name }}</h6>
-                                <small class="text-muted">{{ task.task_type }} | {{ task.start_time }} - {{ task.end_time|default:"In Progress" }}</small>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                {% if task.task_status == "Started" %}
-                                    <form action="{% url 'task_complete' task.employee_task_id %}" method="POST" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-success btn-sm">
-                                            <i class="bi bi-check-circle"></i> Complete
-                                        </button>
-                                    </form>
-                                {% else %}
-                                    <span class="badge bg-secondary">{{ task.task_status }}</span>
-                                {% endif %}
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="text-center text-muted p-4">No tasks found for the selected date.</p>
-                {% endif %}
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in tasks %}
+                            <tr class="task-row" data-status="{{ task.task_status }}">
+                                <td>{{ task.project_name }}</td>
+                                <td>
+                                     <span class="badge status-badge-lg
+                                        {% if task.task_status == 'Completed' %}bg-success
+                                        {% else %}bg-warning text-dark{% endif %}">
+                                        {{ task.task_status|default:"Pending" }}
+                                    </span>
+                                </td>
+                                <td class="d-flex">
+                                    {% if task.task_status != 'Completed' %}
+                                        <a href="{% url 'edit_task' task.employee_task_id %}" class="btn btn-sm btn-primary me-2 btn-edit-task">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                        <form method="POST" action="{% url 'complete_task' task.employee_task_id %}" onsubmit="return confirm('Are you sure you want to complete this task?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="bi bi-check-circle"></i> 
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="text-success fst-italic">Done</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">
+                                    <p>You haven't added any tasks yet.</p>
+                                    <a href="{% url 'add_task' %}" class="btn btn-primary">Add Your First Task</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-
+    
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Drawer open/close logic
-        const menuBtn = document.getElementById("menuBtn");
-        const drawer = document.getElementById("drawer");
-        menuBtn.addEventListener("click", () => drawer.classList.add("open"));
-        function closeDrawer() { drawer.classList.remove("open"); }
-        window.addEventListener("click", function (event) {
-            if (!drawer.contains(event.target) && !menuBtn.contains(event.target)) {
-                closeDrawer();
+        // REMOVED: Drawer open/close logic is no longer needed.
+
+        // JavaScript for the button filter
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterButtons = document.querySelectorAll('#taskFilter .nav-link');
+            const taskRows = document.querySelectorAll('.task-row');
+            
+            function filterTasks(selectedStatus) {
+                taskRows.forEach(row => {
+                    const status = row.getAttribute('data-status');
+                    
+                    if (selectedStatus === 'completed') {
+                        row.style.display = (status === 'Completed') ? '' : 'none';
+                    } else {
+                        row.style.display = (status !== 'Completed') ? '' : 'none';
+                    }
+                });
             }
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    const statusToShow = this.getAttribute('data-status');
+                    filterTasks(statusToShow);
+                });
+            });
+
+            filterTasks('active');
         });
     </script>
 </body>

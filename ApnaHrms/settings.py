@@ -122,12 +122,12 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
-STATIC_URL = "/hrms/static/"
+STATIC_URL = "/ApnaHrms/static/"
 # STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [
-    # BASE_DIR / "hrms/static",
-    BASE_DIR / "static",
+    BASE_DIR / "ApnaHrms/static",
+    # BASE_DIR / "static",
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
