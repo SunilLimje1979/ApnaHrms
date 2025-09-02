@@ -30,11 +30,13 @@ def dashboard(request):
 
     user_profile = request.session['user_profile']
     employee_id = user_profile.get('employee_id')
+    login_pin = user_profile.get('login_pin', 0000)
     
     context = {
         'first_name': user_profile.get('first_name', 'User'),
         'total_hours': "0.00",
-        'is_manager': False
+        'is_manager': False,
+        'login_pin': login_pin
     }
 
     if not employee_id:
@@ -71,7 +73,6 @@ def dashboard(request):
         messages.error(request, "Could not connect to the backend server to load dashboard data.")
 
     return render(request, 'hrms/dashboard.html', context)
-
 
 
 @csrf_exempt
